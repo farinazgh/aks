@@ -1,0 +1,171 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  # Security Group for ALB
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTP traffic on port 80
+      VpcId: vpc-xxxxxxxx # Replace with your VPC ID
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  # Security Group for EC2 Instance
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTP traffic from ALB
+      VpcId: vpc-xxxxxxxx # Replace with your VPC ID
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+
+  # Application Load Balancer
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: MyApplicationLoadBalancer
+      Subnets:
+        - subnet-xxxxxxxx # Replace with your subnet ID
+        - subnet-xxxxxxxx # Replace with your subnet ID
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Scheme: internet-facing
+
+  # Target Group for /networks
+  TargetGroupNetworks:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: NetworksTargetGroup
+      Port: 80
+      Protocol: HTTP
+      VpcId: vpc-xxxxxxxx # Replace with your VPC ID
+      Targets:
+        - Id: i-xxxxxxxxxx # Replace with your EC2 Instance ID for /networks
+
+  # Target Group for /shows
+  TargetGroupShows:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: ShowsTargetGroup
+      Port: 80
+      Protocol: HTTP
+      VpcId: vpc-xxxxxxxx # Replace with your VPC ID
+      Targets:
+        - Id: i-yyyyyyyyyy # Replace with your EC2 Instance ID for /shows
+
+  # Target Group for /episodes
+  TargetGroupEpisodes:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: EpisodesTargetGroup
+      Port: 80
+      Protocol: HTTP
+      VpcId: vpc-xxxxxxxx # Replace with your VPC ID
+      Targets:
+        - Id: i-zzzzzzzzzz # Replace with your EC2 Instance ID for /episodes
+
+  # Listener for Load Balancer with Path-based routing
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroupNetworks
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  # Listener Rule for /networks
+  ListenerRuleNetworks:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroupNetworks
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /networks/*
+      ListenerArn: !Ref Listener
+      Priority: 1
+
+  # Listener Rule for /shows
+  ListenerRuleShows:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroupShows
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /shows/*
+      ListenerArn: !Ref Listener
+      Priority: 2
+
+  # Listener Rule for /episodes
+  ListenerRuleEpisodes:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroupEpisodes
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /episodes/*
+      ListenerArn: !Ref Listener
+      Priority: 3
+
+  # EC2 Instance for /networks
+  EC2InstanceNetworks:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-xxxxxxxx # Replace with your AMI ID
+      InstanceType: t2.micro
+      SecurityGroupIds:
+        - !Ref EC2SecurityGroup
+      SubnetId: subnet-xxxxxxxx # Replace with your subnet ID
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          echo "Welcome to the Networks page" > /var/www/html/index.html
+          yum install -y httpd
+          service httpd start
+
+  # EC2 Instance for /shows
+  EC2InstanceShows:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-xxxxxxxx # Replace with your AMI ID
+      InstanceType: t2.micro
+      SecurityGroupIds:
+        - !Ref EC2SecurityGroup
+      SubnetId: subnet-xxxxxxxx # Replace with your subnet ID
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          echo "Welcome to the Shows page" > /var/www/html/index.html
+          yum install -y httpd
+          service httpd start
+
+  # EC2 Instance for /episodes
+  EC2InstanceEpisodes:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-xxxxxxxx # Replace with your AMI ID
+      InstanceType: t2.micro
+      SecurityGroupIds:
+        - !Ref EC2SecurityGroup
+      SubnetId: subnet-xxxxxxxx # Replace with your subnet ID
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          echo "Welcome to the Episodes page" > /var/www/html/index.html
+          yum install -y httpd
+          service httpd start
